@@ -357,7 +357,7 @@ export default function SummaryPage() {
               <XAxis dataKey="year" />
               <YAxis label={{ value: 'Cost ($M)', angle: -90, position: 'insideLeft' }} />
               <Tooltip
-                formatter={(value: number) => [`$${value.toFixed(2)}M`, '']}
+                formatter={(value) => [`$${typeof value === 'number' ? value.toFixed(2) : '0.00'}M`, '']}
                 labelFormatter={(label) => `Year ${label}`}
               />
               <Legend />
