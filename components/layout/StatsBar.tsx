@@ -1,50 +1,62 @@
 'use client'
-import { ProjectCategory } from '@/types'
+import { FundingCategory } from '@/types'
 import { usePlan } from '@/context/PlanContext'
 import { formatCost, projectPresentTotal, projectInflatedTotal } from '@/lib/calculations'
 
 interface StatsBarProps {
-  categories: ProjectCategory[]
+  fundingCategories: FundingCategory[]
 }
 
-export function StatsBar({ categories }: StatsBarProps) {
+export function StatsBar({ fundingCategories }: StatsBarProps) {
   const { settings, years } = usePlan()
 
-  const allProjects = categories.flatMap((cat) => cat.projects)
+  const allProjects = fundingCategories.flatMap((fc) =>
+    fc.subcategories.flatMap((cat) => cat.projects)
+  )
   const enabledProjects = allProjects.filter((p) => p.enabled)
 
   const totalPresentCost = enabledProjects.reduce(
-    (sum, p) => sum + projectPresentTotal(p.buckets, years),
+    (sum, p) => sum + projectPresentTotal(p.buckets, years, settings.base_year, settings.inflation_rate),
     0
   )
 
   const totalInflatedCost = enabledProjects.reduce(
-    (sum, p) =>
-      sum + projectInflatedTotal(p.buckets, years, settings.base_year, settings.inflation_rate),
+    (sum, p) => sum + projectInflatedTotal(p.buckets, years),
     0
   )
 
+  // Calculate new debt total
+  const newDebtTotal = enabledProjects.reduce((sum, p) => {
+    const newDebtBucket = p.buckets.find((b) => b.bucket_type === 'new_debt')
+    if (!newDebtBucket) return sum
+    return (
+      sum +
+      Object.values(newDebtBucket.year_costs).reduce((bucketSum, cost) => bucketSum + cost, 0)
+    )
+  }, 0)
+
   const stats = [
     {
-      label: 'Total Projects',
-      value: allProjects.length.toString(),
-      sublabel: `${enabledProjects.length} enabled`,
+      label: 'Enabled Projects',
+      value: enabledProjects.length.toString(),
+      sublabel: `${allProjects.length} total`,
     },
     {
-      label: 'Total Present Cost',
+      label: 'Present Total Cost',
       value: formatCost(totalPresentCost),
       sublabel: `${years.length} years`,
     },
     {
-      label: 'Total Inflated Cost',
+      label: 'Inflated Total Cost',
       value: formatCost(totalInflatedCost),
       sublabel: `${settings.inflation_rate}% inflation`,
-      valueClassName: 'text-blue-600',
+      valueClassName: 'text-cyan-600',
     },
     {
-      label: 'Categories',
-      value: categories.length.toString(),
-      sublabel: 'active groups',
+      label: 'New Debt',
+      value: formatCost(newDebtTotal),
+      sublabel: 'financing required',
+      valueClassName: 'text-blue-600',
     },
   ]
 

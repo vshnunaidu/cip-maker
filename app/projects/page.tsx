@@ -1,13 +1,12 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { ProjectCategory, Project, ProjectBucket } from '@/types'
+import { FundingCategory, ProjectCategory, Project, ProjectBucket } from '@/types'
 import { ProjectsTable } from '@/components/table/ProjectsTable'
 import { TopBar } from '@/components/layout/TopBar'
-import { StatsBar } from '@/components/layout/StatsBar'
 
 export default function ProjectsPage() {
-  const [categories, setCategories] = useState<ProjectCategory[]>([])
+  const [fundingCategories, setFundingCategories] = useState<FundingCategory[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -17,7 +16,13 @@ export default function ProjectsPage() {
   async function fetchData() {
     setLoading(true)
 
-    // Fetch categories
+    // Fetch funding categories
+    const { data: fundingCategoriesData } = await supabase
+      .from('funding_categories')
+      .select('*')
+      .order('sort_order')
+
+    // Fetch project categories (subcategories)
     const { data: categoriesData } = await supabase
       .from('project_categories')
       .select('*')
@@ -34,29 +39,38 @@ export default function ProjectsPage() {
       .from('project_buckets')
       .select('*')
 
-    // Assemble nested structure
-    const categoriesWithProjects: ProjectCategory[] = (categoriesData || []).map((cat) => {
-      const categoryProjects = (projectsData || [])
-        .filter((p) => p.category_id === cat.id)
-        .map((proj): Project => ({
-          ...proj,
-          buckets: (bucketsData || [])
-            .filter((b) => b.project_id === proj.id)
-            .map((b): ProjectBucket => ({
-              id: b.id,
-              project_id: b.project_id,
-              bucket_type: b.bucket_type,
-              year_costs: b.year_costs || {},
-            })),
-        }))
+    // Assemble 3-level nested structure: funding categories → subcategories → projects → buckets
+    const fundingCategoriesWithData: FundingCategory[] = (fundingCategoriesData || []).map((fundingCat) => {
+      const subcategories: ProjectCategory[] = (categoriesData || [])
+        .filter((cat) => cat.funding_category_id === fundingCat.id)
+        .map((cat) => {
+          const categoryProjects = (projectsData || [])
+            .filter((p) => p.category_id === cat.id)
+            .map((proj): Project => ({
+              ...proj,
+              buckets: (bucketsData || [])
+                .filter((b) => b.project_id === proj.id)
+                .map((b): ProjectBucket => ({
+                  id: b.id,
+                  project_id: b.project_id,
+                  bucket_type: b.bucket_type,
+                  year_costs: b.year_costs || {},
+                })),
+            }))
+
+          return {
+            ...cat,
+            projects: categoryProjects,
+          }
+        })
 
       return {
-        ...cat,
-        projects: categoryProjects,
+        ...fundingCat,
+        subcategories,
       }
     })
 
-    setCategories(categoriesWithProjects)
+    setFundingCategories(fundingCategoriesWithData)
     setLoading(false)
   }
 
@@ -74,7 +88,11 @@ export default function ProjectsPage() {
     )
   }
 
-  const totalProjects = categories.reduce((sum, cat) => sum + cat.projects.length, 0)
+  const totalProjects = fundingCategories.reduce(
+    (sum, fundingCat) =>
+      sum + fundingCat.subcategories.reduce((subSum, cat) => subSum + cat.projects.length, 0),
+    0
+  )
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
@@ -85,12 +103,9 @@ export default function ProjectsPage() {
           <p className="text-slate-600 mt-1">Manage and track capital improvement projects</p>
         </div>
         {totalProjects > 0 ? (
-          <>
-            <StatsBar categories={categories} />
-            <div className="bg-white rounded-xl shadow-lg overflow-auto border border-slate-200">
-              <ProjectsTable categories={categories} onDataChange={fetchData} />
-            </div>
-          </>
+          <div className="bg-white rounded-xl shadow-lg overflow-auto border border-slate-200">
+            <ProjectsTable fundingCategories={fundingCategories} onDataChange={fetchData} />
+          </div>
         ) : (
           <div className="bg-white rounded-xl shadow-lg p-12 text-center border border-slate-200">
             <div className="text-slate-400 mb-4">

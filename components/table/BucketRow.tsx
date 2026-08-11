@@ -3,7 +3,7 @@ import { ProjectBucket } from '@/types'
 import { BucketBadge } from '@/components/ui/BucketBadge'
 import { EditableCell } from '@/components/ui/EditableCell'
 import { usePlan } from '@/context/PlanContext'
-import { formatCost, bucketRangeTotal, bucketInflatedTotal } from '@/lib/calculations'
+import { formatCost, bucketPresentTotal, bucketInflatedTotal } from '@/lib/calculations'
 
 interface BucketRowProps {
   bucket: ProjectBucket
@@ -14,13 +14,8 @@ interface BucketRowProps {
 export function BucketRow({ bucket, onUpdateCost, disabled = false }: BucketRowProps) {
   const { settings, years } = usePlan()
 
-  const presentTotal = bucketRangeTotal(bucket.year_costs, years)
-  const inflatedTotal = bucketInflatedTotal(
-    bucket.year_costs,
-    years,
-    settings.base_year,
-    settings.inflation_rate
-  )
+  const presentTotal = bucketPresentTotal(bucket.year_costs, years, settings.base_year, settings.inflation_rate)
+  const inflatedTotal = bucketInflatedTotal(bucket.year_costs, years)
 
   const borderColor = {
     issued_debt_cash: 'border-l-emerald-500',

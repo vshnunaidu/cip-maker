@@ -20,7 +20,7 @@ export function Sidebar() {
         <p className="text-sm text-slate-400 mt-1">Project Management</p>
       </div>
 
-      <nav className="flex-1 px-3 py-4">
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href

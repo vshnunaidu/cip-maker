@@ -28,7 +28,16 @@ export interface ProjectCategory {
   id: string
   name: string
   sort_order: number
+  funding_category_id: string | null
   projects: Project[]
+}
+
+export interface FundingCategory {
+  id: string
+  code: string
+  name: string
+  sort_order: number
+  subcategories: ProjectCategory[]
 }
 
 export interface PlanSettings {

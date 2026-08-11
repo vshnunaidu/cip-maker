@@ -1,27 +1,26 @@
 'use client'
-import { ProjectCategory } from '@/types'
+import { FundingCategory } from '@/types'
 import { usePlan } from '@/context/PlanContext'
 import { formatCost, projectPresentTotal, projectInflatedTotal } from '@/lib/calculations'
 
 interface GrandTotalRowProps {
-  categories: ProjectCategory[]
+  fundingCategories: FundingCategory[]
   yearCount: number
 }
 
-export function GrandTotalRow({ categories, yearCount }: GrandTotalRowProps) {
+export function GrandTotalRow({ fundingCategories, yearCount }: GrandTotalRowProps) {
   const { settings, years } = usePlan()
 
-  const allEnabledProjects = categories.flatMap((cat) =>
-    cat.projects.filter((p) => p.enabled)
+  const allEnabledProjects = fundingCategories.flatMap((fc) =>
+    fc.subcategories.flatMap((cat) => cat.projects.filter((p) => p.enabled))
   )
 
   const grandPresentTotal = allEnabledProjects.reduce(
-    (sum, p) => sum + projectPresentTotal(p.buckets, years),
+    (sum, p) => sum + projectPresentTotal(p.buckets, years, settings.base_year, settings.inflation_rate),
     0
   )
   const grandInflatedTotal = allEnabledProjects.reduce(
-    (sum, p) =>
-      sum + projectInflatedTotal(p.buckets, years, settings.base_year, settings.inflation_rate),
+    (sum, p) => sum + projectInflatedTotal(p.buckets, years),
     0
   )
 

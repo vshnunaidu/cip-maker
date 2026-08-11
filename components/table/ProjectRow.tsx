@@ -16,13 +16,8 @@ export function ProjectRow({ project, onToggle, onEdit }: ProjectRowProps) {
   const { settings, years } = usePlan()
   const [isHovered, setIsHovered] = useState(false)
 
-  const presentTotal = projectPresentTotal(project.buckets, years)
-  const inflatedTotal = projectInflatedTotal(
-    project.buckets,
-    years,
-    settings.base_year,
-    settings.inflation_rate
-  )
+  const presentTotal = projectPresentTotal(project.buckets, years, settings.base_year, settings.inflation_rate)
+  const inflatedTotal = projectInflatedTotal(project.buckets, years)
 
   return (
     <tr
