@@ -4,7 +4,7 @@ import { Pencil } from 'lucide-react'
 import { Project } from '@/types'
 import { Toggle } from '@/components/ui/Toggle'
 import { usePlan } from '@/context/PlanContext'
-import { formatCost, projectPresentTotal, projectInflatedTotal } from '@/lib/calculations'
+import { formatCost, formatPresentCost, projectPresentTotal, projectInflatedTotal } from '@/lib/calculations'
 
 interface ProjectRowProps {
   project: Project
@@ -16,8 +16,8 @@ export function ProjectRow({ project, onToggle, onEdit }: ProjectRowProps) {
   const { settings, years } = usePlan()
   const [isHovered, setIsHovered] = useState(false)
 
-  const presentTotal = projectPresentTotal(project.buckets, years, settings.base_year, settings.inflation_rate)
-  const inflatedTotal = projectInflatedTotal(project.buckets, years)
+  const presentTotal = projectPresentTotal(project.buckets, years)
+  const inflatedTotal = projectInflatedTotal(project.buckets, years, settings.inflation_rate)
 
   return (
     <tr
@@ -52,7 +52,7 @@ export function ProjectRow({ project, onToggle, onEdit }: ProjectRowProps) {
           )}
         </div>
       </td>
-      <td className="px-4 py-3.5 text-right font-bold text-slate-900">{formatCost(presentTotal)}</td>
+      <td className="px-4 py-3.5 text-right font-bold text-slate-900">{formatPresentCost(presentTotal)}</td>
       <td className="px-4 py-3.5 text-right font-bold text-cyan-600">
         {formatCost(inflatedTotal)}
       </td>

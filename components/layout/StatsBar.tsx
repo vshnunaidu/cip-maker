@@ -1,7 +1,7 @@
 'use client'
 import { FundingCategory } from '@/types'
 import { usePlan } from '@/context/PlanContext'
-import { formatCost, projectPresentTotal, projectInflatedTotal } from '@/lib/calculations'
+import { formatCost, formatPresentCost, projectPresentTotal, projectInflatedTotal } from '@/lib/calculations'
 
 interface StatsBarProps {
   fundingCategories: FundingCategory[]
@@ -16,12 +16,12 @@ export function StatsBar({ fundingCategories }: StatsBarProps) {
   const enabledProjects = allProjects.filter((p) => p.enabled)
 
   const totalPresentCost = enabledProjects.reduce(
-    (sum, p) => sum + projectPresentTotal(p.buckets, years, settings.base_year, settings.inflation_rate),
+    (sum, p) => sum + projectPresentTotal(p.buckets, years),
     0
   )
 
   const totalInflatedCost = enabledProjects.reduce(
-    (sum, p) => sum + projectInflatedTotal(p.buckets, years),
+    (sum, p) => sum + projectInflatedTotal(p.buckets, years, settings.inflation_rate),
     0
   )
 
@@ -43,7 +43,7 @@ export function StatsBar({ fundingCategories }: StatsBarProps) {
     },
     {
       label: 'Present Total Cost',
-      value: formatCost(totalPresentCost),
+      value: formatPresentCost(totalPresentCost),
       sublabel: `${years.length} years`,
     },
     {
@@ -54,7 +54,7 @@ export function StatsBar({ fundingCategories }: StatsBarProps) {
     },
     {
       label: 'New Debt',
-      value: formatCost(newDebtTotal),
+      value: formatPresentCost(newDebtTotal),
       sublabel: 'financing required',
       valueClassName: 'text-blue-600',
     },

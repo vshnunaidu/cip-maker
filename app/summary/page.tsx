@@ -1,16 +1,19 @@
 'use client'
 import React, { useState, useEffect } from 'react'
+import { Download } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { usePlan } from '@/context/PlanContext'
 import { FundingCategory, ProjectCategory, Project, ProjectBucket } from '@/types'
 import { StatsBar } from '@/components/layout/StatsBar'
 import {
   formatCost,
+  formatPresentCost,
   projectPresentTotal,
   projectInflatedTotal,
   bucketInflatedTotal,
 } from '@/lib/calculations'
 import { getCategoryColors } from '@/lib/categoryColors'
+import { generateSummaryPDF } from '@/lib/export'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 export default function SummaryPage() {
@@ -106,22 +109,22 @@ export default function SummaryPage() {
   const fundingCategoryTotals = fundingCategories.map((fc) => {
     const fcProjects = fc.subcategories.flatMap((cat) => cat.projects.filter((p) => p.enabled))
     const presentTotal = fcProjects.reduce(
-      (sum, p) => sum + projectPresentTotal(p.buckets, years, settings.base_year, settings.inflation_rate),
+      (sum, p) => sum + projectPresentTotal(p.buckets, years),
       0
     )
     const inflatedTotal = fcProjects.reduce(
-      (sum, p) => sum + projectInflatedTotal(p.buckets, years),
+      (sum, p) => sum + projectInflatedTotal(p.buckets, years, settings.inflation_rate),
       0
     )
     return { code: fc.code, name: fc.name, presentTotal, inflatedTotal }
   })
 
   const grandPresentTotal = enabledProjects.reduce(
-    (sum, p) => sum + projectPresentTotal(p.buckets, years, settings.base_year, settings.inflation_rate),
+    (sum, p) => sum + projectPresentTotal(p.buckets, years),
     0
   )
   const grandInflatedTotal = enabledProjects.reduce(
-    (sum, p) => sum + projectInflatedTotal(p.buckets, years),
+    (sum, p) => sum + projectInflatedTotal(p.buckets, years, settings.inflation_rate),
     0
   )
 
@@ -131,17 +134,17 @@ export default function SummaryPage() {
 
     const issuedCashTotal = fcProjects.reduce((sum, p) => {
       const bucket = p.buckets.find(b => b.bucket_type === 'issued_debt_cash')
-      return sum + (bucket ? bucketInflatedTotal(bucket.year_costs, years) : 0)
+      return sum + (bucket ? bucketInflatedTotal(bucket.year_costs, years, settings.inflation_rate) : 0)
     }, 0)
 
     const newDebtTotal = fcProjects.reduce((sum, p) => {
       const bucket = p.buckets.find(b => b.bucket_type === 'new_debt')
-      return sum + (bucket ? bucketInflatedTotal(bucket.year_costs, years) : 0)
+      return sum + (bucket ? bucketInflatedTotal(bucket.year_costs, years, settings.inflation_rate) : 0)
     }, 0)
 
     const impactFeesTotal = fcProjects.reduce((sum, p) => {
       const bucket = p.buckets.find(b => b.bucket_type === 'impact_fees')
-      return sum + (bucket ? bucketInflatedTotal(bucket.year_costs, years) : 0)
+      return sum + (bucket ? bucketInflatedTotal(bucket.year_costs, years, settings.inflation_rate) : 0)
     }, 0)
 
     return {
@@ -176,11 +179,31 @@ export default function SummaryPage() {
     return dataPoint
   })
 
+  const handleExportSummaryPDF = () => {
+    generateSummaryPDF({
+      fundingCategories,
+      years,
+      baseYear: 2025,
+      inflationRate: settings.inflation_rate,
+      cityName: settings.city_name,
+      planTitle: settings.plan_title,
+    })
+  }
+
   return (
     <div className="p-6 bg-slate-50 pb-12">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-slate-900">Summary</h1>
-        <p className="text-slate-600 mt-1">Comprehensive overview of project costs and distribution</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Summary</h1>
+          <p className="text-slate-600 mt-1">Comprehensive overview of project costs and distribution</p>
+        </div>
+        <button
+          onClick={handleExportSummaryPDF}
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all font-semibold shadow-lg shadow-blue-500/30"
+        >
+          <Download className="w-5 h-5" />
+          Export Summary PDF
+        </button>
       </div>
 
       {/* Year Matrix - Moved to Top */}
@@ -226,11 +249,11 @@ export default function SummaryPage() {
                       <td className="px-4 py-3 font-bold">{fc.code} — {fc.name}</td>
                       {fcYearTotals.map((total, idx) => (
                         <td key={idx} className="px-4 py-3 text-right font-medium border-l" style={{ borderColor: 'rgba(255,255,255,0.3)' }}>
-                          {total > 0 ? formatCost(total) : '—'}
+                          {total > 0 ? formatPresentCost(total) : '—'}
                         </td>
                       ))}
                       <td className="px-4 py-3 text-right font-bold border-l" style={{ borderColor: 'rgba(255,255,255,0.3)' }}>
-                        {formatCost(fcTotal)}
+                        {formatPresentCost(fcTotal)}
                       </td>
                     </tr>
                   </React.Fragment>
@@ -240,7 +263,7 @@ export default function SummaryPage() {
                 <td className="px-4 py-4 text-lg uppercase tracking-wide">TOTAL</td>
                 {yearTotals.map((yt) => (
                   <td key={yt.year} className="px-4 py-4 text-right text-base border-l border-slate-600">
-                    {yt.total > 0 ? formatCost(yt.total) : '—'}
+                    {yt.total > 0 ? formatPresentCost(yt.total) : '—'}
                   </td>
                 ))}
                 <td className="px-4 py-4 text-right text-lg text-cyan-300 border-l border-slate-600">{formatCost(grandInflatedTotal)}</td>
@@ -269,7 +292,7 @@ export default function SummaryPage() {
               <div className="font-bold text-slate-900 mb-3 text-lg">{fct.code} — {fct.name}</div>
               <div className="flex items-center justify-between text-sm bg-white px-3 py-2 rounded-lg mb-2">
                 <span className="text-slate-600 font-medium">Present:</span>
-                <span className="font-bold text-slate-900">{formatCost(fct.presentTotal)}</span>
+                <span className="font-bold text-slate-900">{formatPresentCost(fct.presentTotal)}</span>
               </div>
               <div className="flex items-center justify-between text-sm bg-white px-3 py-2 rounded-lg">
                 <span className="text-slate-600 font-medium">Inflated:</span>
@@ -280,28 +303,6 @@ export default function SummaryPage() {
             </div>
           )
         })}
-      </div>
-
-      {/* Total Cost by Year Bar Chart */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-slate-200 mb-6">
-        <h2 className="text-xl font-bold text-slate-900 mb-4">Total Cost by Year</h2>
-        <div className="space-y-3">
-          {yearTotals.map((yt) => {
-            const maxYearTotal = Math.max(...yearTotals.map((y) => y.total))
-            return (
-              <div key={yt.year} className="flex items-center gap-3">
-                <div className="w-16 text-sm font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-md text-center">{yt.year}</div>
-                <div className="flex-1 bg-slate-100 rounded-full h-7 overflow-hidden shadow-inner">
-                  <div
-                    className="bg-gradient-to-r from-blue-600 to-cyan-500 h-full transition-all shadow-sm"
-                    style={{ width: `${(yt.total / maxYearTotal) * 100}%` }}
-                  ></div>
-                </div>
-                <div className="w-28 text-sm font-bold text-right text-slate-900">{formatCost(yt.total)}</div>
-              </div>
-            )
-          })}
-        </div>
       </div>
 
       {/* Category Comparison Section */}
@@ -349,7 +350,7 @@ export default function SummaryPage() {
         </div>
 
         {/* Year-over-Year Line Chart */}
-        <div className="mb-8">
+        <div>
           <h3 className="text-lg font-bold text-slate-900 mb-3">Year-over-Year Comparison</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={yearOverYearData}>
@@ -378,48 +379,48 @@ export default function SummaryPage() {
             </LineChart>
           </ResponsiveContainer>
         </div>
+      </div>
 
-        {/* Funding Mix Breakdown Table */}
-        <div>
-          <h3 className="text-lg font-bold text-slate-900 mb-3">Funding Mix by Category</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border border-slate-200">
-              <thead className="bg-slate-100 border-b-2 border-slate-300">
-                <tr>
-                  <th className="px-4 py-3 text-left font-bold text-slate-900">Category</th>
-                  <th className="px-4 py-3 text-right font-bold text-slate-900">Issued/Cash</th>
-                  <th className="px-4 py-3 text-right font-bold text-slate-900">New Debt</th>
-                  <th className="px-4 py-3 text-right font-bold text-slate-900">Impact Fees</th>
-                  <th className="px-4 py-3 text-right font-bold text-slate-900">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fundingMixData.map((fc, idx) => {
-                  const colors = getCategoryColors(fc.code)
-                  return (
-                    <tr
-                      key={fc.code}
-                      className="border-b border-slate-200"
-                      style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : colors.rowTint }}
-                    >
-                      <td className="px-4 py-3 font-bold text-slate-900">{fc.code} — {fc.name}</td>
-                      <td className="px-4 py-3 text-right text-slate-700">{formatCost(fc.issuedCash)}</td>
-                      <td className="px-4 py-3 text-right text-slate-700">{formatCost(fc.newDebt)}</td>
-                      <td className="px-4 py-3 text-right text-slate-700">{formatCost(fc.impactFees)}</td>
-                      <td className="px-4 py-3 text-right font-bold text-slate-900">{formatCost(fc.total)}</td>
-                    </tr>
-                  )
-                })}
-                <tr className="bg-slate-800 text-white font-bold border-t-2 border-slate-900">
-                  <td className="px-4 py-4 uppercase tracking-wide">TOTAL</td>
-                  <td className="px-4 py-4 text-right">{formatCost(totalIssuedCash)}</td>
-                  <td className="px-4 py-4 text-right">{formatCost(totalNewDebt)}</td>
-                  <td className="px-4 py-4 text-right">{formatCost(totalImpactFees)}</td>
-                  <td className="px-4 py-4 text-right text-lg text-cyan-300">{formatCost(totalIssuedCash + totalNewDebt + totalImpactFees)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+      {/* Funding Mix Breakdown Table */}
+      <div className="bg-white rounded-xl shadow-lg p-6 border border-slate-200">
+        <h2 className="text-2xl font-bold text-slate-900 mb-4">Funding Mix by Category</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border border-slate-200">
+            <thead className="bg-slate-100 border-b-2 border-slate-300">
+              <tr>
+                <th className="px-4 py-3 text-left font-bold text-slate-900">Category</th>
+                <th className="px-4 py-3 text-right font-bold text-slate-900">Issued/Cash</th>
+                <th className="px-4 py-3 text-right font-bold text-slate-900">New Debt</th>
+                <th className="px-4 py-3 text-right font-bold text-slate-900">Impact Fees</th>
+                <th className="px-4 py-3 text-right font-bold text-slate-900">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fundingMixData.map((fc, idx) => {
+                const colors = getCategoryColors(fc.code)
+                return (
+                  <tr
+                    key={fc.code}
+                    className="border-b border-slate-200"
+                    style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : colors.rowTint }}
+                  >
+                    <td className="px-4 py-3 font-bold text-slate-900">{fc.code} — {fc.name}</td>
+                    <td className="px-4 py-3 text-right text-slate-700">{formatCost(fc.issuedCash)}</td>
+                    <td className="px-4 py-3 text-right text-slate-700">{formatCost(fc.newDebt)}</td>
+                    <td className="px-4 py-3 text-right text-slate-700">{formatCost(fc.impactFees)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-slate-900">{formatCost(fc.total)}</td>
+                  </tr>
+                )
+              })}
+              <tr className="bg-slate-800 text-white font-bold border-t-2 border-slate-900">
+                <td className="px-4 py-4 uppercase tracking-wide">TOTAL</td>
+                <td className="px-4 py-4 text-right">{formatCost(totalIssuedCash)}</td>
+                <td className="px-4 py-4 text-right">{formatCost(totalNewDebt)}</td>
+                <td className="px-4 py-4 text-right">{formatCost(totalImpactFees)}</td>
+                <td className="px-4 py-4 text-right text-lg text-cyan-300">{formatCost(totalIssuedCash + totalNewDebt + totalImpactFees)}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

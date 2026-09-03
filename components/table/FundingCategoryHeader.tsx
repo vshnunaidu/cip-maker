@@ -1,7 +1,7 @@
 'use client'
 import { FundingCategory } from '@/types'
 import { usePlan } from '@/context/PlanContext'
-import { formatCost, projectPresentTotal, projectInflatedTotal } from '@/lib/calculations'
+import { formatCost, formatPresentCost, projectPresentTotal, projectInflatedTotal } from '@/lib/calculations'
 import { getCategoryColors } from '@/lib/categoryColors'
 
 interface FundingCategoryHeaderProps {
@@ -23,12 +23,12 @@ export function FundingCategoryHeader({
   )
 
   const presentTotal = enabledProjects.reduce(
-    (sum, p) => sum + projectPresentTotal(p.buckets, years, settings.base_year, settings.inflation_rate),
+    (sum, p) => sum + projectPresentTotal(p.buckets, years),
     0
   )
 
   const inflatedTotal = enabledProjects.reduce(
-    (sum, p) => sum + projectInflatedTotal(p.buckets, years),
+    (sum, p) => sum + projectInflatedTotal(p.buckets, years, settings.inflation_rate),
     0
   )
 
@@ -52,7 +52,7 @@ export function FundingCategoryHeader({
         </div>
       </td>
       <td className="px-4 py-4 text-right">
-        <span className="text-sm font-bold" style={{ color: colors.text }}>{formatCost(presentTotal)}</span>
+        <span className="text-sm font-bold" style={{ color: colors.text }}>{formatPresentCost(presentTotal)}</span>
       </td>
       <td className="px-4 py-4 text-right">
         <span className="text-sm font-bold" style={{ color: colors.text }}>{formatCost(inflatedTotal)}</span>

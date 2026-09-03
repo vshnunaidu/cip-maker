@@ -1,7 +1,7 @@
 'use client'
 import { FundingCategory } from '@/types'
 import { usePlan } from '@/context/PlanContext'
-import { formatCost, projectPresentTotal, projectInflatedTotal } from '@/lib/calculations'
+import { formatCost, formatPresentCost, projectPresentTotal, projectInflatedTotal } from '@/lib/calculations'
 
 interface GrandTotalRowProps {
   fundingCategories: FundingCategory[]
@@ -16,11 +16,11 @@ export function GrandTotalRow({ fundingCategories, yearCount }: GrandTotalRowPro
   )
 
   const grandPresentTotal = allEnabledProjects.reduce(
-    (sum, p) => sum + projectPresentTotal(p.buckets, years, settings.base_year, settings.inflation_rate),
+    (sum, p) => sum + projectPresentTotal(p.buckets, years),
     0
   )
   const grandInflatedTotal = allEnabledProjects.reduce(
-    (sum, p) => sum + projectInflatedTotal(p.buckets, years),
+    (sum, p) => sum + projectInflatedTotal(p.buckets, years, settings.inflation_rate),
     0
   )
 
@@ -29,7 +29,7 @@ export function GrandTotalRow({ fundingCategories, yearCount }: GrandTotalRowPro
       <td colSpan={2} className="px-4 py-4 font-bold text-lg uppercase tracking-wide">
         Grand Total
       </td>
-      <td className="px-4 py-4 text-right font-bold text-xl">{formatCost(grandPresentTotal)}</td>
+      <td className="px-4 py-4 text-right font-bold text-xl">{formatPresentCost(grandPresentTotal)}</td>
       <td className="px-4 py-4 text-right font-bold text-xl text-cyan-300">
         {formatCost(grandInflatedTotal)}
       </td>
