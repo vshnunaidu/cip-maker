@@ -103,9 +103,14 @@ export default function ProjectsPage() {
           <p className="text-slate-600 mt-1">Manage and track capital improvement projects</p>
         </div>
         {totalProjects > 0 ? (
-          <div className="bg-white rounded-xl shadow-lg overflow-auto border border-slate-200">
-            <ProjectsTable fundingCategories={fundingCategories} onDataChange={fetchData} />
-          </div>
+          <>
+            <div className="bg-white rounded-xl shadow-lg overflow-auto border border-slate-200">
+              <ProjectsTable fundingCategories={fundingCategories} onDataChange={fetchData} />
+            </div>
+            <div className="mt-3 text-center text-sm text-slate-500 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+              💡 <span className="font-semibold">Tip:</span> Hold <kbd className="px-2 py-1 bg-white border border-slate-300 rounded text-xs font-mono">Shift</kbd> and scroll to move horizontally
+            </div>
+          </>
         ) : (
           <div className="bg-white rounded-xl shadow-lg p-12 text-center border border-slate-200">
             <div className="text-slate-400 mb-4">

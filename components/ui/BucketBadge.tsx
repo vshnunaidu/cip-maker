@@ -5,9 +5,9 @@ interface BucketBadgeProps {
 }
 
 const BUCKET_COLORS: Record<BucketType, string> = {
-  issued_debt_cash: 'bg-emerald-100 text-emerald-900 border-emerald-400',
-  new_debt: 'bg-blue-100 text-blue-900 border-blue-400',
-  impact_fees: 'bg-violet-100 text-violet-900 border-violet-400',
+  issued_debt_cash: 'bg-amber-100 text-amber-900 border-amber-500',
+  new_debt: 'bg-rose-100 text-rose-900 border-rose-500',
+  impact_fees: 'bg-teal-100 text-teal-900 border-teal-500',
 }
 
 export function BucketBadge({ type }: BucketBadgeProps) {

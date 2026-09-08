@@ -21,6 +21,7 @@ export interface Project {
   description: string | null
   enabled: boolean
   sort_order: number
+  start_year: number | null
   buckets: ProjectBucket[]
 }
 

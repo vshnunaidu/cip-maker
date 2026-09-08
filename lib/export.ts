@@ -67,8 +67,8 @@ export function exportToExcel({
 
       // Process each project
       categoryProjects.forEach((project) => {
-      const presentTotal = projectPresentTotal(project.buckets, years, baseYear, inflationRate)
-      const inflatedTotal = projectInflatedTotal(project.buckets, years)
+      const presentTotal = projectPresentTotal(project.buckets, years)
+      const inflatedTotal = projectInflatedTotal(project.buckets, years, inflationRate)
 
       // Project summary row
       worksheetData.push([
@@ -83,8 +83,8 @@ export function exportToExcel({
 
       // Bucket rows
       project.buckets.forEach((bucket) => {
-        const bucketPresent = bucketPresentTotal(bucket.year_costs, years, baseYear, inflationRate)
-        const bucketInflated = bucketInflatedTotal(bucket.year_costs, years)
+        const bucketPresent = bucketPresentTotal(bucket.year_costs, years)
+        const bucketInflated = bucketInflatedTotal(bucket.year_costs, years, inflationRate)
 
         worksheetData.push([
           '',
@@ -100,11 +100,11 @@ export function exportToExcel({
 
       // Subcategory subtotal
       const categoryPresent = categoryProjects.reduce(
-        (sum, p) => sum + projectPresentTotal(p.buckets, years, baseYear, inflationRate),
+        (sum, p) => sum + projectPresentTotal(p.buckets, years),
         0
       )
       const categoryInflated = categoryProjects.reduce(
-        (sum, p) => sum + projectInflatedTotal(p.buckets, years),
+        (sum, p) => sum + projectInflatedTotal(p.buckets, years, inflationRate),
         0
       )
 
@@ -121,11 +121,11 @@ export function exportToExcel({
 
     // Funding category subtotal
     const fcPresent = fcProjects.reduce(
-      (sum, p) => sum + projectPresentTotal(p.buckets, years, baseYear, inflationRate),
+      (sum, p) => sum + projectPresentTotal(p.buckets, years),
       0
     )
     const fcInflated = fcProjects.reduce(
-      (sum, p) => sum + projectInflatedTotal(p.buckets, years),
+      (sum, p) => sum + projectInflatedTotal(p.buckets, years, inflationRate),
       0
     )
 
@@ -144,11 +144,11 @@ export function exportToExcel({
 
   // Grand total
   const grandPresent = enabledProjects.reduce(
-    (sum, p) => sum + projectPresentTotal(p.buckets, years, baseYear, inflationRate),
+    (sum, p) => sum + projectPresentTotal(p.buckets, years),
     0
   )
   const grandInflated = enabledProjects.reduce(
-    (sum, p) => sum + projectInflatedTotal(p.buckets, years),
+    (sum, p) => sum + projectInflatedTotal(p.buckets, years, inflationRate),
     0
   )
 
@@ -241,8 +241,8 @@ export function exportToPDF({
 
       // Process each project
       subcatProjects.forEach((project) => {
-        const presentTotal = projectPresentTotal(project.buckets, years, baseYear, inflationRate)
-        const inflatedTotal = projectInflatedTotal(project.buckets, years)
+        const presentTotal = projectPresentTotal(project.buckets, years)
+        const inflatedTotal = projectInflatedTotal(project.buckets, years, inflationRate)
 
         // Project summary row
         const projectYearTotals = years.map((year) => {
@@ -263,7 +263,7 @@ export function exportToPDF({
 
         // Bucket rows (only show non-zero buckets)
         project.buckets.forEach((bucket) => {
-          const bucketPresent = bucketPresentTotal(bucket.year_costs, years, baseYear, inflationRate)
+          const bucketPresent = bucketPresentTotal(bucket.year_costs, years)
           if (bucketPresent === 0) return // Skip empty buckets
 
           tableData.push([
@@ -285,7 +285,7 @@ export function exportToPDF({
     })
 
     // Funding category subtotal
-    const fcPresent = fcProjects.reduce((sum, p) => sum + projectPresentTotal(p.buckets, years, baseYear, inflationRate), 0)
+    const fcPresent = fcProjects.reduce((sum, p) => sum + projectPresentTotal(p.buckets, years), 0)
     tableData.push([
       { content: `${fundingCat.code} Subtotal`, colSpan: 3, styles: { fontStyle: 'bold', fillColor: [226, 232, 240] } },
       formatCost(fcPresent),
@@ -301,7 +301,7 @@ export function exportToPDF({
   const enabledProjects = fundingCategories.flatMap((fc) =>
     fc.subcategories.flatMap((cat) => cat.projects.filter((p) => p.enabled))
   )
-  const grandPresent = enabledProjects.reduce((sum, p) => sum + projectPresentTotal(p.buckets, years, baseYear, inflationRate), 0)
+  const grandPresent = enabledProjects.reduce((sum, p) => sum + projectPresentTotal(p.buckets, years), 0)
 
   tableData.push([
     { content: 'GRAND TOTAL', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [51, 65, 85], textColor: [255, 255, 255] } },
@@ -348,5 +348,220 @@ export function exportToPDF({
 
   // Save the PDF
   const fileName = `${cityName.replace(/\s+/g, '_')}_CIP_${new Date().toISOString().split('T')[0]}.pdf`
+  doc.save(fileName)
+}
+
+export function generateSummaryPDF({
+  fundingCategories,
+  years,
+  inflationRate,
+  cityName,
+  planTitle,
+}: ExportOptions) {
+  const doc = new jsPDF('landscape', 'pt', 'letter')
+
+  const enabledProjects = fundingCategories.flatMap((fc) =>
+    fc.subcategories.flatMap((cat) => cat.projects.filter((p) => p.enabled))
+  )
+
+  const grandPresentTotal = enabledProjects.reduce(
+    (sum, p) => sum + projectPresentTotal(p.buckets, years),
+    0
+  )
+  const grandInflatedTotal = enabledProjects.reduce(
+    (sum, p) => sum + projectInflatedTotal(p.buckets, years, inflationRate),
+    0
+  )
+
+  // Helper function to add header
+  const addHeader = (pageTitle: string) => {
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`${cityName} | ${planTitle} | ${pageTitle}`, 40, 30)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, doc.internal.pageSize.width - 140, 30)
+  }
+
+  // Page 1: Stat Cards & Per-Category Totals
+  addHeader('SUMMARY REPORT')
+
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Summary Overview', 40, 60)
+
+  // Stat cards
+  const statCardsY = 80
+  const stats = [
+    { label: 'Enabled Projects', value: enabledProjects.length.toString() },
+    { label: 'Present Total', value: formatCost(grandPresentTotal) },
+    { label: 'Inflated Total', value: formatCost(grandInflatedTotal) },
+  ]
+
+  stats.forEach((stat, idx) => {
+    const x = 40 + idx * 240
+    doc.setFillColor(241, 245, 249)
+    doc.rect(x, statCardsY, 220, 60, 'F')
+    doc.setFontSize(9)
+    doc.setTextColor(71, 85, 105)
+    doc.text(stat.label, x + 10, statCardsY + 20)
+    doc.setFontSize(18)
+    doc.setTextColor(15, 23, 42)
+    doc.setFont('helvetica', 'bold')
+    doc.text(stat.value, x + 10, statCardsY + 45)
+  })
+
+  // Per-funding-category totals table
+  const categoryTotalsData = fundingCategories.map((fc) => {
+    const fcProjects = fc.subcategories.flatMap((cat) => cat.projects.filter((p) => p.enabled))
+    const presentTotal = fcProjects.reduce((sum, p) => sum + projectPresentTotal(p.buckets, years), 0)
+    const inflatedTotal = fcProjects.reduce((sum, p) => sum + projectInflatedTotal(p.buckets, years, inflationRate), 0)
+    return [fc.code + ' — ' + fc.name, formatCost(presentTotal), formatCost(inflatedTotal)]
+  })
+
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text('Total by Funding Category', 40, 170)
+
+  autoTable(doc, {
+    head: [['Category', 'Present Cost', 'Inflated Cost']],
+    body: categoryTotalsData,
+    startY: 180,
+    theme: 'grid',
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
+    styles: { fontSize: 10 },
+  })
+
+  // Page 2: Year Matrix
+  doc.addPage()
+  addHeader('SUMMARY REPORT - Year Matrix')
+
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Year Matrix', 40, 60)
+
+  const yearMatrixHeaders = ['Category', ...years.map(String), 'Total']
+  const yearMatrixData: any[][] = []
+
+  fundingCategories.forEach((fc) => {
+    const fcProjects = fc.subcategories.flatMap((cat) => cat.projects.filter((p) => p.enabled))
+    const fcYearTotals = years.map((year) => {
+      return fcProjects.reduce((sum, project) => {
+        const yearTotal = project.buckets.reduce(
+          (bucketSum, bucket) => bucketSum + (bucket.year_costs[String(year)] || 0),
+          0
+        )
+        return sum + yearTotal
+      }, 0)
+    })
+    const fcTotal = fcYearTotals.reduce((sum, val) => sum + val, 0)
+
+    yearMatrixData.push([
+      { content: fc.code + ' — ' + fc.name, styles: { fontStyle: 'bold' } },
+      ...fcYearTotals.map(t => t > 0 ? formatCost(t) : '—'),
+      { content: formatCost(fcTotal), styles: { fontStyle: 'bold' } }
+    ])
+  })
+
+  // Grand total row
+  const grandTotalByYear = years.map((year) => {
+    return enabledProjects.reduce((sum, project) => {
+      const yearTotal = project.buckets.reduce(
+        (bucketSum, bucket) => bucketSum + (bucket.year_costs[String(year)] || 0),
+        0
+      )
+      return sum + yearTotal
+    }, 0)
+  })
+
+  yearMatrixData.push([
+    { content: 'TOTAL', styles: { fontStyle: 'bold', fillColor: [51, 65, 85], textColor: [255, 255, 255] } },
+    ...grandTotalByYear.map(t => ({ content: t > 0 ? formatCost(t) : '—', styles: { fontStyle: 'bold', fillColor: [51, 65, 85], textColor: [255, 255, 255] } })),
+    { content: formatCost(grandInflatedTotal), styles: { fontStyle: 'bold', fillColor: [51, 65, 85], textColor: [255, 255, 255] } }
+  ])
+
+  autoTable(doc, {
+    head: [yearMatrixHeaders],
+    body: yearMatrixData,
+    startY: 80,
+    theme: 'grid',
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+    styles: { fontSize: 7, cellPadding: 2 },
+    columnStyles: {
+      0: { cellWidth: 150 }
+    }
+  })
+
+  // Page 3: Category Comparison
+  doc.addPage()
+  addHeader('SUMMARY REPORT - Funding Mix')
+
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Funding Mix by Category', 40, 60)
+
+  // Calculate funding mix
+  const fundingMixData = fundingCategories.map((fc) => {
+    const fcProjects = fc.subcategories.flatMap((cat) => cat.projects.filter((p) => p.enabled))
+
+    const issuedCashTotal = fcProjects.reduce((sum, p) => {
+      const bucket = p.buckets.find(b => b.bucket_type === 'issued_debt_cash')
+      return sum + (bucket ? bucketInflatedTotal(bucket.year_costs, years, inflationRate) : 0)
+    }, 0)
+
+    const newDebtTotal = fcProjects.reduce((sum, p) => {
+      const bucket = p.buckets.find(b => b.bucket_type === 'new_debt')
+      return sum + (bucket ? bucketInflatedTotal(bucket.year_costs, years, inflationRate) : 0)
+    }, 0)
+
+    const impactFeesTotal = fcProjects.reduce((sum, p) => {
+      const bucket = p.buckets.find(b => b.bucket_type === 'impact_fees')
+      return sum + (bucket ? bucketInflatedTotal(bucket.year_costs, years, inflationRate) : 0)
+    }, 0)
+
+    return [
+      fc.code + ' — ' + fc.name,
+      formatCost(issuedCashTotal),
+      formatCost(newDebtTotal),
+      formatCost(impactFeesTotal),
+      formatCost(issuedCashTotal + newDebtTotal + impactFeesTotal)
+    ]
+  })
+
+  const totalIssuedCash = fundingMixData.reduce((sum, row) => {
+    const val = enabledProjects.reduce((s, p) => {
+      const bucket = p.buckets.find(b => b.bucket_type === 'issued_debt_cash')
+      return s + (bucket ? bucketInflatedTotal(bucket.year_costs, years, inflationRate) : 0)
+    }, 0)
+    return val
+  }, 0)
+
+  const totalNewDebt = enabledProjects.reduce((sum, p) => {
+    const bucket = p.buckets.find(b => b.bucket_type === 'new_debt')
+    return sum + (bucket ? bucketInflatedTotal(bucket.year_costs, years, inflationRate) : 0)
+  }, 0)
+
+  const totalImpactFees = enabledProjects.reduce((sum, p) => {
+    const bucket = p.buckets.find(b => b.bucket_type === 'impact_fees')
+    return sum + (bucket ? bucketInflatedTotal(bucket.year_costs, years, inflationRate) : 0)
+  }, 0)
+
+  fundingMixData.push([
+    { content: 'TOTAL', styles: { fontStyle: 'bold', fillColor: [51, 65, 85], textColor: [255, 255, 255] } },
+    { content: formatCost(totalIssuedCash + totalNewDebt + totalImpactFees), styles: { fontStyle: 'bold', fillColor: [51, 65, 85], textColor: [255, 255, 255] }, colSpan: 4 }
+  ])
+
+  autoTable(doc, {
+    head: [['Category', 'Issued/Cash', 'New Debt', 'Impact Fees', 'Total']],
+    body: fundingMixData,
+    startY: 80,
+    theme: 'grid',
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
+    styles: { fontSize: 10 },
+  })
+
+  // Save
+  const fileName = `${cityName.replace(/\s+/g, '_')}_Summary_${new Date().toISOString().split('T')[0]}.pdf`
   doc.save(fileName)
 }

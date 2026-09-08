@@ -4,12 +4,6 @@ import { usePlan } from '@/context/PlanContext'
 export function TopBar() {
   const { settings, updateSettings } = usePlan()
 
-  const handleBaseYearChange = (value: number) => {
-    if (value >= 2000 && value <= 2060) {
-      updateSettings({ base_year: value })
-    }
-  }
-
   const handleInflationRateChange = (value: number) => {
     if (value >= 0 && value <= 50) {
       // Round to 2 decimal places
@@ -33,18 +27,6 @@ export function TopBar() {
   return (
     <div className="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
       <div className="flex items-center gap-8">
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-semibold text-slate-700">Base Year:</label>
-          <input
-            type="number"
-            min="2000"
-            max="2060"
-            value={settings?.base_year ?? 2025}
-            onChange={(e) => handleBaseYearChange(parseInt(e.target.value) || 2025)}
-            className="w-24 px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-50"
-          />
-        </div>
-
         <div className="flex items-center gap-3">
           <label className="text-sm font-semibold text-slate-700">Inflation Rate:</label>
           <div className="flex items-center gap-2">

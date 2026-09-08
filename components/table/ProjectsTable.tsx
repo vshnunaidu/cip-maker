@@ -81,6 +81,25 @@ export function ProjectsTable({ fundingCategories, onDataChange }: ProjectsTable
     onDataChange()
   }
 
+  const handleSwapYears = async (
+    bucketId: string,
+    yearCosts: Record<string, number>,
+    year1: string,
+    year2: string
+  ) => {
+    const value1 = yearCosts[year1] || 0
+    const value2 = yearCosts[year2] || 0
+
+    // Swap the values in a single update
+    const updated = { ...yearCosts, [year1]: value2, [year2]: value1 }
+    await supabase
+      .from('project_buckets')
+      .update({ year_costs: updated })
+      .eq('id', bucketId)
+
+    onDataChange()
+  }
+
   const isBucketVisible = (bucket: ProjectBucket): boolean => {
     // Always show if manually revealed
     if (visibleBuckets.has(bucket.id)) return true
@@ -94,7 +113,16 @@ export function ProjectsTable({ fundingCategories, onDataChange }: ProjectsTable
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div
+      className="overflow-x-auto max-h-[calc(100vh-12rem)] overflow-y-auto relative"
+      onWheel={(e) => {
+        // Enable horizontal scroll with shift+wheel
+        if (e.shiftKey) {
+          e.currentTarget.scrollLeft += e.deltaY
+          e.preventDefault()
+        }
+      }}
+    >
       <table className="w-full border-collapse bg-white">
         <thead className="sticky top-0 bg-gradient-to-b from-slate-700 to-slate-800 border-b-2 border-slate-900 z-10 shadow-lg">
           <tr>
@@ -114,8 +142,12 @@ export function ProjectsTable({ fundingCategories, onDataChange }: ProjectsTable
               <th
                 key={year}
                 className="px-4 py-3.5 text-center text-xs font-bold text-white uppercase tracking-wider border-l border-slate-600 w-28"
+                title="Values shown in inflated dollars. Click to edit in today's dollars."
               >
-                {year}
+                <div className="flex items-center justify-center gap-1">
+                  {year}
+                  <span className="text-cyan-300 text-[10px]" title="Values shown in inflated dollars. Click to edit in today's dollars.">ⓘ</span>
+                </div>
               </th>
             ))}
           </tr>
@@ -192,7 +224,11 @@ export function ProjectsTable({ fundingCategories, onDataChange }: ProjectsTable
                                     onUpdateCost={(year, value) =>
                                       handleUpdateBucketCost(bucket.id, bucket.year_costs, year, value)
                                     }
+                                    onSwapYears={(year1, year2) =>
+                                      handleSwapYears(bucket.id, bucket.year_costs, year1, year2)
+                                    }
                                     disabled={!project.enabled}
+                                    project={project}
                                   />
                                 ))}
                                 {hiddenBuckets.length > 0 && (

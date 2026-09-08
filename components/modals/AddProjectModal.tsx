@@ -17,6 +17,7 @@ interface FormData {
   name: string
   description: string
   category_id: string
+  start_year: string
 }
 
 const BUCKET_TYPES: BucketType[] = ['issued_debt_cash', 'new_debt', 'impact_fees']
@@ -37,6 +38,7 @@ export function AddProjectModal({ fundingCategories, onClose, onSuccess }: AddPr
           name: data.name,
           description: data.description || null,
           category_id: data.category_id || null,
+          start_year: data.start_year ? parseInt(data.start_year) : null,
           enabled: true,
           sort_order: 999,
         })
@@ -196,6 +198,31 @@ export function AddProjectModal({ fundingCategories, onClose, onSuccess }: AddPr
             />
             {errors.description && (
               <p className="text-sm text-red-600 mt-1 font-medium">{errors.description.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Start Year (Optional)
+            </label>
+            <input
+              type="number"
+              {...register('start_year', {
+                min: {
+                  value: 2025,
+                  message: 'Start year must be 2025 or later'
+                },
+                max: {
+                  value: 2060,
+                  message: 'Start year must be 2060 or earlier'
+                }
+              })}
+              placeholder="e.g., 2028"
+              className="w-full px-4 py-2.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 font-medium bg-slate-50"
+            />
+            <p className="text-xs text-slate-600 mt-1">Leave blank to start from the plan's start year</p>
+            {errors.start_year && (
+              <p className="text-sm text-red-600 mt-1 font-medium">{errors.start_year.message}</p>
             )}
           </div>
           </div>

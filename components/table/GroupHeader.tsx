@@ -16,11 +16,11 @@ export function GroupHeader({ category, yearCount }: GroupHeaderProps) {
 
   const enabledProjects = category.projects.filter((p) => p.enabled)
   const categoryPresentTotal = enabledProjects.reduce(
-    (sum, p) => sum + projectPresentTotal(p.buckets, years, settings.base_year, settings.inflation_rate),
+    (sum, p) => sum + projectPresentTotal(p.buckets, years),
     0
   )
   const categoryInflatedTotal = enabledProjects.reduce(
-    (sum, p) => sum + projectInflatedTotal(p.buckets, years),
+    (sum, p) => sum + projectInflatedTotal(p.buckets, years, settings.inflation_rate),
     0
   )
 

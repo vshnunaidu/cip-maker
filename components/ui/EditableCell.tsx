@@ -1,21 +1,29 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { Pencil, Check } from 'lucide-react'
+import { inflateCost } from '@/lib/calculations'
 
 interface EditableCellProps {
   value: number
   onChange: (value: number) => void
   onNext?: () => void
   disabled?: boolean
+  year?: number // Year for inflation calculation
+  inflationRate?: number // Inflation rate percentage
 }
 
-export function EditableCell({ value, onChange, onNext, disabled = false }: EditableCellProps) {
+export function EditableCell({ value, onChange, onNext, disabled = false, year, inflationRate }: EditableCellProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(value.toString())
   const [showSaved, setShowSaved] = useState(false)
   const [showError, setShowError] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Calculate display value (inflated if year and inflationRate provided, otherwise raw)
+  const displayValue = year && inflationRate !== undefined && value > 0
+    ? inflateCost(value, year, inflationRate)
+    : value
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -83,7 +91,7 @@ export function EditableCell({ value, onChange, onNext, disabled = false }: Edit
   if (showError) {
     return (
       <div className="px-3 py-2 text-right font-medium text-red-700 bg-red-100 rounded-lg animate-pulse">
-        {value === 0 ? '—' : `$${value.toLocaleString()}`}
+        {displayValue === 0 ? '—' : `$${Math.round(displayValue).toLocaleString()}`}
       </div>
     )
   }
@@ -92,7 +100,7 @@ export function EditableCell({ value, onChange, onNext, disabled = false }: Edit
     return (
       <div className="px-3 py-2 text-right font-medium text-emerald-700 bg-emerald-50 rounded-lg flex items-center justify-end gap-1">
         <Check className="w-3 h-3" />
-        {value === 0 ? '—' : `$${value.toLocaleString()}`}
+        {displayValue === 0 ? '—' : `$${Math.round(displayValue).toLocaleString()}`}
       </div>
     )
   }
@@ -102,14 +110,18 @@ export function EditableCell({ value, onChange, onNext, disabled = false }: Edit
       onClick={() => setIsEditing(true)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="px-3 py-2 text-right cursor-pointer hover:bg-blue-100 rounded-lg transition-all font-medium text-slate-800 hover:shadow-sm relative group"
+      className="px-3 py-2 text-right cursor-pointer hover:bg-blue-100 rounded-lg transition-all font-medium hover:shadow-sm relative group"
+      style={{
+        color: year && inflationRate !== undefined && value > 0 ? '#0891b2' : '#1e293b',
+        fontWeight: year && inflationRate !== undefined && value > 0 ? '600' : '500'
+      }}
     >
       <div className="flex items-center justify-end gap-1">
-        {value === 0 ? (
+        {displayValue === 0 ? (
           <span className="text-slate-400">{isHovered ? 'Click to add' : '—'}</span>
         ) : (
           <>
-            ${value.toLocaleString()}
+            ${Math.round(displayValue).toLocaleString()}
             {isHovered && <Pencil className="w-3 h-3 text-blue-600" />}
           </>
         )}

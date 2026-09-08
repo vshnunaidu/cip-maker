@@ -4,7 +4,7 @@ import { Download, FileSpreadsheet, FileText } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { usePlan } from '@/context/PlanContext'
 import { FundingCategory, ProjectCategory, Project, ProjectBucket } from '@/types'
-import { exportToExcel, exportToPDF } from '@/lib/export'
+import { exportToExcel, exportToPDF, generateSummaryPDF } from '@/lib/export'
 
 export default function ExportPage() {
   const { settings, years } = usePlan()
@@ -87,6 +87,17 @@ export default function ExportPage() {
       fundingCategories,
       years,
       baseYear: settings.base_year,
+      inflationRate: settings.inflation_rate,
+      cityName: settings.city_name,
+      planTitle: settings.plan_title,
+    })
+  }
+
+  function handleExportSummaryPDF() {
+    generateSummaryPDF({
+      fundingCategories,
+      years,
+      baseYear: 2025,
       inflationRate: settings.inflation_rate,
       cityName: settings.city_name,
       planTitle: settings.plan_title,
@@ -190,6 +201,41 @@ export default function ExportPage() {
             >
               <Download className="w-5 h-5" />
               {isLoading ? 'Loading...' : 'Export to PDF'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-slate-200">
+        <div className="flex items-start gap-4">
+          <div className="p-4 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-xl border-2 border-emerald-300">
+            <FileText className="w-10 h-10 text-emerald-700" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Summary PDF Export</h2>
+            <p className="text-slate-700 mb-4 leading-relaxed">
+              Export a comprehensive summary report to PDF format. This report includes high-level
+              statistics, year matrices, and funding distribution charts.
+            </p>
+
+            <div className="bg-slate-50 rounded-lg p-4 mb-4 border border-slate-200">
+              <h3 className="font-semibold text-sm text-slate-900 mb-2">Export includes:</h3>
+              <ul className="text-sm text-slate-700 space-y-1">
+                <li>• Overview statistics (enabled projects, total costs)</li>
+                <li>• Per-funding-category totals table</li>
+                <li>• Year-by-year matrix across all categories</li>
+                <li>• Funding mix breakdown by category</li>
+                <li>• Multi-page landscape format</li>
+              </ul>
+            </div>
+
+            <button
+              onClick={handleExportSummaryPDF}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-600 transition-all disabled:opacity-50 font-semibold shadow-lg shadow-emerald-500/30"
+            >
+              <Download className="w-5 h-5" />
+              {isLoading ? 'Loading...' : 'Export Summary PDF'}
             </button>
           </div>
         </div>

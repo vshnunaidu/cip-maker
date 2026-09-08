@@ -84,11 +84,6 @@ export default function SettingsPage() {
       newErrors.plan_title = 'Plan title cannot exceed 200 characters'
     }
 
-    // Base year validation
-    if (localSettings.base_year < 2000 || localSettings.base_year > 2060) {
-      newErrors.base_year = 'Base year must be between 2000 and 2060'
-    }
-
     // Inflation rate validation
     if (localSettings.inflation_rate < 0 || localSettings.inflation_rate > 50) {
       newErrors.inflation_rate = 'Inflation rate must be between 0 and 50'
@@ -331,33 +326,7 @@ export default function SettingsPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Base Year *
-              </label>
-              <input
-                type="number"
-                min="2000"
-                max="2060"
-                value={localSettings?.base_year ?? 2025}
-                onChange={(e) => {
-                  setLocalSettings({ ...localSettings, base_year: parseInt(e.target.value) || 2025 })
-                  if (errors.base_year) {
-                    const newErrors = { ...errors }
-                    delete newErrors.base_year
-                    setErrors(newErrors)
-                  }
-                }}
-                className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 font-medium bg-slate-50 ${
-                  errors.base_year ? 'border-red-500' : 'border-slate-300'
-                }`}
-              />
-              {errors.base_year && (
-                <p className="text-sm text-red-600 mt-1 font-medium">{errors.base_year}</p>
-              )}
-            </div>
-
+          <div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Inflation Rate (%) *
