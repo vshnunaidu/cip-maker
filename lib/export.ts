@@ -502,7 +502,7 @@ export function generateSummaryPDF({
   doc.text('Funding Mix by Category', 40, 60)
 
   // Calculate funding mix
-  const fundingMixData = fundingCategories.map((fc) => {
+  const fundingMixData: any[] = fundingCategories.map((fc) => {
     const fcProjects = fc.subcategories.flatMap((cat) => cat.projects.filter((p) => p.enabled))
 
     const issuedCashTotal = fcProjects.reduce((sum, p) => {
