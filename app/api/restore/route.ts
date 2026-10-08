@@ -876,153 +876,125 @@ const PROJECTS = [
 
 export async function GET() {
   try {
+    const startTime = Date.now()
     const logs: string[] = []
-    let projectsUpserted = 0
-    let bucketsUpserted = 0
-    let totalPresentValue = 0
     const errors: string[] = []
 
-    logs.push('Starting data restoration...')
+    logs.push('Starting optimized batch restoration...')
 
-    // Step 1: Upsert funding categories
-    logs.push('Step 1: Upserting funding categories...')
-    for (const fc of FUNDING_CATEGORIES) {
-      const { error } = await supabase
-        .from('funding_categories')
-        .upsert({ code: fc.code, name: fc.name, sort_order: fc.sort_order }, { onConflict: 'code' })
-      if (error) {
-        errors.push(`Error upserting funding category ${fc.code}: ${error.message}`)
-      } else {
-        logs.push(`  ✓ ${fc.code} - ${fc.name}`)
-      }
+    // Step 1: Batch upsert funding categories
+    logs.push('Step 1: Batch upserting funding categories...')
+    const { error: fcError } = await supabase
+      .from('funding_categories')
+      .upsert(FUNDING_CATEGORIES, { onConflict: 'code' })
+
+    if (fcError) {
+      errors.push(`Error upserting funding categories: ${fcError.message}`)
+    } else {
+      logs.push(`  ✓ Upserted ${FUNDING_CATEGORIES.length} funding categories`)
     }
 
-    // Step 2: Upsert subcategories
-    logs.push('Step 2: Upserting subcategories...')
-    for (const [fcCode, subcats] of Object.entries(SUBCATEGORIES)) {
-      const { data: fc } = await supabase
-        .from('funding_categories')
-        .select('id')
-        .eq('code', fcCode)
-        .single()
+    // Fetch all funding categories with their IDs
+    const { data: fundingCats } = await supabase
+      .from('funding_categories')
+      .select('id, code')
 
-      if (!fc) {
-        errors.push(`Funding category ${fcCode} not found!`)
-        continue
-      }
+    const fcMap = new Map(fundingCats?.map(fc => [fc.code, fc.id]) || [])
 
-      for (const subcat of subcats) {
-        const { error } = await supabase
-          .from('project_categories')
-          .upsert(
-            {
-              funding_category_id: fc.id,
-              name: subcat.name,
-              sort_order: subcat.sort_order,
-            },
-            { onConflict: 'funding_category_id,name' }
-          )
-        if (error) {
-          errors.push(`Error upserting subcategory ${subcat.name}: ${error.message}`)
-        } else {
-          logs.push(`  ✓ ${fcCode} → ${subcat.name}`)
-        }
-      }
+    // Step 2: Batch upsert subcategories
+    logs.push('Step 2: Batch upserting subcategories...')
+    const allSubcats = Object.entries(SUBCATEGORIES).flatMap(([fcCode, subcats]) => {
+      const fcId = fcMap.get(fcCode)
+      if (!fcId) return []
+      return subcats.map(sc => ({
+        funding_category_id: fcId,
+        name: sc.name,
+        sort_order: sc.sort_order,
+      }))
+    })
+
+    const { error: scError } = await supabase
+      .from('project_categories')
+      .upsert(allSubcats, { onConflict: 'funding_category_id,name' })
+
+    if (scError) {
+      errors.push(`Error upserting subcategories: ${scError.message}`)
+    } else {
+      logs.push(`  ✓ Upserted ${allSubcats.length} subcategories`)
     }
 
-    // Step 3: Upsert projects and their buckets
-    logs.push('Step 3: Upserting projects and buckets...')
-    for (const proj of PROJECTS) {
-      // Find funding category
-      const { data: fc } = await supabase
-        .from('funding_categories')
-        .select('id')
-        .eq('code', proj.fundingCategory)
-        .single()
+    // Fetch all subcategories with their IDs
+    const { data: subcats } = await supabase
+      .from('project_categories')
+      .select('id, funding_category_id, name')
 
-      if (!fc) {
-        errors.push(`Funding category ${proj.fundingCategory} not found for project ${proj.project_id_label}`)
-        continue
+    const scMap = new Map(subcats?.map(sc => [`${sc.funding_category_id}-${sc.name}`, sc.id]) || [])
+
+    // Step 3: Batch upsert projects
+    logs.push('Step 3: Batch upserting projects...')
+    const allProjects = PROJECTS.map(proj => {
+      const fcId = fcMap.get(proj.fundingCategory)
+      const scId = scMap.get(`${fcId}-${proj.subcategory}`)
+      return {
+        project_id_label: proj.project_id_label,
+        category_id: scId!,
+        name: proj.name,
+        description: proj.description,
+        sort_order: proj.sort_order,
+        budget_ceiling: proj.budget_ceiling,
       }
+    }).filter(p => p.category_id !== undefined)
 
-      // Find subcategory
-      const { data: subcat } = await supabase
-        .from('project_categories')
-        .select('id')
-        .eq('funding_category_id', fc.id)
-        .eq('name', proj.subcategory)
-        .single()
+    const { error: projError } = await supabase
+      .from('projects')
+      .upsert(allProjects, { onConflict: 'project_id_label' })
 
-      if (!subcat) {
-        errors.push(`Subcategory ${proj.subcategory} not found for project ${proj.project_id_label}`)
-        continue
-      }
+    if (projError) {
+      errors.push(`Error upserting projects: ${projError.message}`)
+    } else {
+      logs.push(`  ✓ Upserted ${allProjects.length} projects`)
+    }
 
-      // Upsert project
-      const { error: projectError } = await supabase
-        .from('projects')
-        .upsert(
-          {
-            project_id_label: proj.project_id_label,
-            category_id: subcat.id,
-            name: proj.name,
-            description: proj.description,
-            sort_order: proj.sort_order,
-            budget_ceiling: proj.budget_ceiling,
-          },
-          { onConflict: 'project_id_label' }
-        )
+    // Fetch all projects with their IDs
+    const { data: projects } = await supabase
+      .from('projects')
+      .select('id, project_id_label')
 
-      if (projectError) {
-        errors.push(`Error upserting project ${proj.project_id_label}: ${projectError.message}`)
-        continue
-      }
+    const projMap = new Map(projects?.map(p => [p.project_id_label, p.id]) || [])
 
-      projectsUpserted++
-      logs.push(`  ✓ ${proj.project_id_label} - ${proj.name}`)
+    // Step 4: Batch upsert buckets
+    logs.push('Step 4: Batch upserting buckets...')
+    let totalPresentValue = 0
+    const allBuckets = PROJECTS.flatMap(proj => {
+      const projId = projMap.get(proj.project_id_label)
+      if (!projId) return []
 
-      // Get the project ID
-      const { data: existingProject } = await supabase
-        .from('projects')
-        .select('id')
-        .eq('project_id_label', proj.project_id_label)
-        .single()
-
-      if (!existingProject) {
-        errors.push(`Could not find project ${proj.project_id_label} after upsert`)
-        continue
-      }
-
-      // Upsert buckets
       const bucketTypes = ['issued_debt_cash', 'new_debt', 'impact_fees'] as const
-      for (const bucketType of bucketTypes) {
+      return bucketTypes.map(bucketType => {
         const yearCosts = proj.buckets[bucketType]
-
-        // Calculate present value for this bucket
         const bucketPV = Object.values(yearCosts).reduce((sum, val) => sum + val, 0)
         totalPresentValue += bucketPV
 
-        const { error: bucketError } = await supabase
-          .from('project_buckets')
-          .upsert(
-            {
-              project_id: existingProject.id,
-              bucket_type: bucketType,
-              year_costs: yearCosts,
-            },
-            { onConflict: 'project_id,bucket_type' }
-          )
-
-        if (bucketError) {
-          errors.push(`Error upserting ${bucketType} bucket for ${proj.project_id_label}: ${bucketError.message}`)
-        } else {
-          bucketsUpserted++
+        return {
+          project_id: projId,
+          bucket_type: bucketType,
+          year_costs: yearCosts,
         }
-      }
+      })
+    })
+
+    const { error: bucketError } = await supabase
+      .from('project_buckets')
+      .upsert(allBuckets, { onConflict: 'project_id,bucket_type' })
+
+    if (bucketError) {
+      errors.push(`Error upserting buckets: ${bucketError.message}`)
+    } else {
+      logs.push(`  ✓ Upserted ${allBuckets.length} buckets`)
     }
 
-    // Step 4: Update plan settings
-    logs.push('Step 4: Updating plan settings...')
+    // Step 5: Update plan settings
+    logs.push('Step 5: Updating plan settings...')
     const { error: settingsError } = await supabase
       .from('plan_settings')
       .update({
@@ -1040,13 +1012,16 @@ export async function GET() {
       logs.push('  ✓ Plan settings updated')
     }
 
+    const duration = Date.now() - startTime
+
     // Return results
     return NextResponse.json({
       success: errors.length === 0,
       summary: {
-        projectsUpserted,
-        bucketsUpserted,
+        projectsUpserted: allProjects.length,
+        bucketsUpserted: allBuckets.length,
         totalPresentValue,
+        durationMs: duration,
       },
       logs,
       errors: errors.length > 0 ? errors : undefined,
