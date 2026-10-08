@@ -50,7 +50,7 @@ export function TopBar() {
         <div className="flex flex-col items-end gap-2">
           {/* Title */}
           <div className="text-sm font-medium text-slate-700 bg-slate-100 px-4 py-2 rounded-lg">
-            {settings?.city_name ?? 'City Name'} • {settings?.plan_title ?? 'Water Capital Improvement Program'}
+            {settings?.plan_title ?? 'Utility Master Plan — Capital Improvement Program'}
           </div>
 
           {/* Controls */}

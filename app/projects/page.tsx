@@ -17,27 +17,31 @@ export default function ProjectsPage() {
     setLoading(true)
 
     // Fetch funding categories
-    const { data: fundingCategoriesData } = await supabase
+    const { data: fundingCategoriesData, error: fcError } = await supabase
       .from('funding_categories')
       .select('*')
       .order('sort_order')
+    if (fcError) console.error('Error fetching funding categories:', fcError)
 
     // Fetch project categories (subcategories)
-    const { data: categoriesData } = await supabase
+    const { data: categoriesData, error: catError } = await supabase
       .from('project_categories')
       .select('*')
       .order('sort_order')
+    if (catError) console.error('Error fetching project categories:', catError)
 
     // Fetch projects
-    const { data: projectsData } = await supabase
+    const { data: projectsData, error: projError } = await supabase
       .from('projects')
       .select('*')
       .order('sort_order')
+    if (projError) console.error('Error fetching projects:', projError)
 
     // Fetch buckets
-    const { data: bucketsData } = await supabase
+    const { data: bucketsData, error: bucketError } = await supabase
       .from('project_buckets')
       .select('*')
+    if (bucketError) console.error('Error fetching buckets:', bucketError)
 
     // Assemble 3-level nested structure: funding categories → subcategories → projects → buckets
     const fundingCategoriesWithData: FundingCategory[] = (fundingCategoriesData || []).map((fundingCat) => {
